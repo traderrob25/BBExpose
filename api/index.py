@@ -1,9 +1,11 @@
+import os
+import requests
 import yfinance as yf
 import pandas as pd
 import numpy as np
 from concurrent.futures import ThreadPoolExecutor, as_completed
 import warnings
-from flask import Flask, jsonify
+from flask import Flask, jsonify, request
 
 warnings.filterwarnings('ignore')
 
@@ -137,6 +139,26 @@ def analyze_stock(symbol):
     except Exception as e:
         return None
 
+def send_discord_alert(reversiones):
+    webhook_url = os.environ.get('DISCORD_WEBHOOK_URL')
+    if not webhook_url:
+        return
+    
+    content = "🚨 **HEXADA ALERTA (OVERSHOOT EN 15M)** 🚨\n"
+    for s in reversiones:
+        direccion = "🔴 Vender / Short (Pullback a la baja)" if s['pos_15m'] == 'UPPER' else "🟢 Comprar / Long (Rebote al alza)"
+        content += f"\n🔥 **{s['symbol']}** | Precio Act: ${s['price']}\n"
+        content += f"👉 Sugerencia: **{direccion}** (Pos %B: {s['pct_15m']}%)\n"
+        content += f"🎯 TARGET SMA20: **${s['target_sma20']}** (Distancia: {s['distancia_target_pct']}%)\n"
+        if s['triple_confluence']:
+            content += f"⚠️ **TRIPLE CONFLUENCIA ACTIVA ({s['confluencia_3tf']})**\n"
+    
+    payload = {"content": content}
+    try:
+        requests.post(webhook_url, json=payload)
+    except Exception as e:
+        print("Error enviando a Discord:", e)
+
 @app.route('/api/scan')
 def scan_api():
     results = []
@@ -151,6 +173,30 @@ def scan_api():
                 pass
 
     return jsonify({"status": "success", "data": results})
+
+@app.route('/api/cron')
+def cron_api():
+    # Seguridad básica de Vercel Cron 
+    auth_header = request.headers.get('Authorization')
+    if os.environ.get('CRON_SECRET') and auth_header != f"Bearer {os.environ.get('CRON_SECRET')}":
+        return jsonify({"status": "unauthorized"}), 401
+        
+    results = []
+    with ThreadPoolExecutor(max_workers=5) as executor:
+        future_to_symbol = {executor.submit(analyze_stock, symbol): symbol for symbol in OPTIONABLE_STOCKS}
+        for future in as_completed(future_to_symbol):
+            try:
+                res = future.result()
+                if res is not None:
+                    results.append(res)
+            except Exception:
+                pass
+
+    reversiones = [r for r in results if r['alerta_reversion']]
+    if reversiones:
+        send_discord_alert(reversiones)
+
+    return jsonify({"status": "success", "alerts_sent": len(reversiones)})
 
 if __name__ == "__main__":
     app.run(port=5328)
