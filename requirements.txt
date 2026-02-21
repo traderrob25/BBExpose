@@ -1,5 +1,5 @@
-yfinance==1.2.0
-pandas==2.2.3
-numpy==2.2.3
-Flask==3.0.3
-Werkzeug==3.0.3
+yfinance
+pandas
+numpy
+Flask
+Werkzeug
