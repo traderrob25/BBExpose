@@ -172,7 +172,39 @@ def scan_api():
             except Exception:
                 pass
 
-    return jsonify({"status": "success", "data": results})
+    yoel_signals_dict = []
+    try:
+        from yos_bot_engine import YOSTradingBot
+        from datetime import datetime
+        import pytz
+        
+        tz = pytz.timezone("America/New_York")
+        now = datetime.now(tz)
+        hora = now.hour
+        minuto = now.minute
+        if hora == 9 and minuto <= 45:
+            modo = "yoel_open"
+        elif hora == 15 and minuto >= 45:
+            modo = "cardona_close"
+        else:
+            modo = "mid_session"
+            
+        yoel_bot = YOSTradingBot(api_key=None)
+        yoel_signals = yoel_bot.run_scan(modo)
+        
+        # Filtrar o mandar todas, las mandamos todas como diccionario
+        yoel_signals_dict = yoel_bot.get_signals_json()
+        if yoel_signals_dict is None:
+             yoel_signals_dict = []
+    except Exception as e:
+        print("Error con YOS Bot:", e)
+
+    return jsonify({
+        "status": "success", 
+        "data": results,
+        "yos_signals": yoel_signals_dict,
+        "yos_mode": modo if 'modo' in locals() else "unknown"
+    })
 
 @app.route('/api/cron')
 def cron_api():
