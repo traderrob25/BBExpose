@@ -1,5 +1,6 @@
 "use client";
 import { useEffect, useState } from "react";
+import AsymmetryDashboard from "@/components/AsymmetryDashboard";
 
 export default function Home() {
   const [data, setData] = useState([]);
@@ -189,6 +190,11 @@ export default function Home() {
               </div>
             ))}
           </div>
+        </section>
+
+        {/* Section: Asimetrías Estructurales */}
+        <section className="pt-8 mb-10 border-t border-gray-800">
+          <AsymmetryDashboard />
         </section>
       </div>
     </div>
