@@ -4,15 +4,15 @@ import React, { useState, useEffect } from 'react';
 import { Search, TrendingUp, TrendingDown, AlertCircle, CheckCircle, Filter, Plus, Trash2, RefreshCw, Download, Eye } from 'lucide-react';
 
 const AsymmetryDashboard = () => {
-  const [stocks, setStocks] = useState([]);
-  const [watchlist, setWatchlist] = useState([]);
+  const [stocks, setStocks] = useState<any[]>([]);
+  const [watchlist, setWatchlist] = useState<any[]>([]);
   const [filters, setFilters] = useState({
     minAsymmetries: 2,
-    selectedAsymmetries: [],
+    selectedAsymmetries: [] as number[],
     marketCapRange: 'all'
   });
   const [searchTerm, setSearchTerm] = useState('');
-  const [selectedStock, setSelectedStock] = useState(null);
+  const [selectedStock, setSelectedStock] = useState<any>(null);
   const [lastUpdate, setLastUpdate] = useState(new Date().toLocaleDateString());
 
   // Las 7 asimetrías estructurales
@@ -166,7 +166,7 @@ const AsymmetryDashboard = () => {
     setStocks(sampleStocks);
   }, []);
 
-  const filteredStocks = stocks.filter(stock => {
+  const filteredStocks = stocks.filter((stock: any) => {
     const meetsMinAsymmetries = stock.asymmetriesPresent.length >= filters.minAsymmetries;
     const matchesSearch = stock.ticker.toLowerCase().includes(searchTerm.toLowerCase()) ||
       stock.name.toLowerCase().includes(searchTerm.toLowerCase());
@@ -180,17 +180,17 @@ const AsymmetryDashboard = () => {
     return meetsMinAsymmetries && matchesSearch && meetsSelectedAsymmetries && meetsMarketCap;
   });
 
-  const addToWatchlist = (stock) => {
-    if (!watchlist.find(s => s.ticker === stock.ticker)) {
+  const addToWatchlist = (stock: any) => {
+    if (!watchlist.find((s: any) => s.ticker === stock.ticker)) {
       setWatchlist([...watchlist, { ...stock, addedDate: new Date().toLocaleDateString() }]);
     }
   };
 
-  const removeFromWatchlist = (ticker) => {
-    setWatchlist(watchlist.filter(s => s.ticker !== ticker));
+  const removeFromWatchlist = (ticker: string) => {
+    setWatchlist(watchlist.filter((s: any) => s.ticker !== ticker));
   };
 
-  const getAsymmetryColor = (count) => {
+  const getAsymmetryColor = (count: number) => {
     if (count >= 4) return 'text-green-600 bg-green-50 border-green-200';
     if (count === 3) return 'text-blue-600 bg-blue-50 border-blue-200';
     return 'text-orange-600 bg-orange-50 border-orange-200';
@@ -198,7 +198,7 @@ const AsymmetryDashboard = () => {
 
   const exportToCSV = () => {
     const headers = ['Ticker', 'Name', 'Price', 'Market Cap (B)', 'Change %', 'Asymmetries', 'ROIC %', 'Insider Own %'];
-    const rows = filteredStocks.map(s => [
+    const rows = filteredStocks.map((s: any) => [
       s.ticker, s.name, s.price, s.marketCap, s.change, s.asymmetriesPresent.length, s.roic, s.insiderOwnership
     ]);
 
@@ -278,8 +278,8 @@ const AsymmetryDashboard = () => {
                   setFilters({ ...filters, selectedAsymmetries: selected });
                 }}
                 className={`cursor-pointer p-3 rounded-lg border-2 transition-all ${filters.selectedAsymmetries.includes(asym.id)
-                    ? 'bg-blue-100 border-blue-500 shadow-md'
-                    : 'bg-slate-50 border-slate-200 hover:border-blue-300'
+                  ? 'bg-blue-100 border-blue-500 shadow-md'
+                  : 'bg-slate-50 border-slate-200 hover:border-blue-300'
                   }`}
               >
                 <div className="text-3xl text-center mb-2">{asym.icon}</div>
@@ -467,8 +467,9 @@ const AsymmetryDashboard = () => {
                   <div className="border-t border-slate-200 pt-4">
                     <div className="text-sm font-semibold text-slate-700 mb-3">Asimetrías Presentes:</div>
                     <div className="space-y-2">
-                      {selectedStock.asymmetriesPresent.map(id => {
-                        const asym = asymmetries.find(a => a.id === id);
+                      {selectedStock.asymmetriesPresent.map((id: number) => {
+                        const asym = asymmetries.find((a: any) => a.id === id);
+                        if (!asym) return null;
                         return (
                           <div key={id} className="flex items-center gap-2 bg-blue-50 p-2 rounded-lg">
                             <span className="text-xl">{asym.icon}</span>
