@@ -173,6 +173,7 @@ def scan_api():
                 pass
 
     yoel_signals_dict = []
+    modo = "unknown"
     try:
         from yos_bot_engine import YOSTradingBot
         from datetime import datetime
@@ -203,7 +204,7 @@ def scan_api():
         "status": "success", 
         "data": results,
         "yos_signals": yoel_signals_dict,
-        "yos_mode": modo if 'modo' in locals() else "unknown"
+        "yos_mode": modo
     })
 
 @app.route('/api/cron')
