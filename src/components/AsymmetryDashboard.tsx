@@ -6,6 +6,12 @@ import { Search, TrendingUp, TrendingDown, AlertCircle, CheckCircle, Filter, Plu
 const AsymmetryDashboard = () => {
   const [stocks, setStocks] = useState<any[]>([]);
   const [watchlist, setWatchlist] = useState<any[]>([]);
+  const [viewMode, setViewMode] = useState<'all' | 'escenarioA' | 'escenarioB'>('all');
+  const [quantFilters, setQuantFilters] = useState({
+    pbUnder1: false,
+    upsideOver50: false,
+    strongBuy: false
+  });
   const [filters, setFilters] = useState({
     minAsymmetries: 2,
     selectedAsymmetries: [] as number[],
@@ -68,7 +74,7 @@ const AsymmetryDashboard = () => {
     }
   ];
 
-  // Datos de ejemplo - En producción, conectar a API real
+  // Datos de ejemplo con las nuevas métricas cuantitativas
   const sampleStocks = [
     {
       ticker: 'POWL',
@@ -83,7 +89,11 @@ const AsymmetryDashboard = () => {
       roic: 22.1,
       acquisitionsYearly: 0,
       institutionalOwnership: 28.5,
-      notes: 'Electrical equipment, strong ROIC, insider buying'
+      notes: 'Electrical equipment, strong ROIC, insider buying',
+      pbRatio: 2.5,
+      targetPrice: 220.0,
+      analystScore: 1.8,
+      sector: 'Industrials'
     },
     {
       ticker: 'SSD',
@@ -98,7 +108,11 @@ const AsymmetryDashboard = () => {
       roic: 28.4,
       acquisitionsYearly: 2,
       institutionalOwnership: 72.3,
-      notes: 'Construction products, decentralized operations'
+      notes: 'Construction products, decentralized operations',
+      pbRatio: 3.1,
+      targetPrice: 245.0,
+      analystScore: 2.1,
+      sector: 'Basic Materials'
     },
     {
       ticker: 'ROLL',
@@ -113,7 +127,11 @@ const AsymmetryDashboard = () => {
       roic: 18.7,
       acquisitionsYearly: 3,
       institutionalOwnership: 88.2,
-      notes: 'Industrial bearings, active acquirer'
+      notes: 'Industrial bearings, active acquirer',
+      pbRatio: 4.2,
+      targetPrice: 320.0,
+      analystScore: 2.4,
+      sector: 'Industrials'
     },
     {
       ticker: 'EXPD',
@@ -128,37 +146,49 @@ const AsymmetryDashboard = () => {
       roic: 35.2,
       acquisitionsYearly: 1,
       institutionalOwnership: 68.5,
-      notes: 'Logistics, exceptional ROIC, decentralized model'
+      notes: 'Logistics, exceptional ROIC, decentralized model',
+      pbRatio: 5.1,
+      targetPrice: 140.0,
+      analystScore: 2.8,
+      sector: 'Industrials'
     },
     {
-      ticker: 'MIDD',
-      name: 'The Middleby Corporation',
-      price: 148.65,
-      marketCap: 7.9,
-      change: -1.2,
-      asymmetriesPresent: [1, 3, 6, 7],
-      analystCoverage: 5,
-      insiderOwnership: 9.2,
-      recentInsiderBuys: 2,
-      roic: 16.8,
-      acquisitionsYearly: 8,
-      institutionalOwnership: 95.4,
-      notes: 'Commercial cooking equipment, serial acquirer'
+      ticker: 'BZH',
+      name: 'Beazer Homes USA',
+      price: 29.50,
+      marketCap: 0.9,
+      change: 4.2,
+      asymmetriesPresent: [1, 5, 6],
+      analystCoverage: 4,
+      insiderOwnership: 12.1,
+      recentInsiderBuys: 3,
+      roic: 14.5,
+      acquisitionsYearly: 0,
+      institutionalOwnership: 85.0,
+      notes: '★ EJEMPLO CREADO PARA TI: Deep value builder, P/B bajo 1.0, enorme potencial alcista.',
+      pbRatio: 0.85,
+      targetPrice: 48.00,
+      analystScore: 1.9,
+      sector: 'Consumer Cyclical'
     },
     {
-      ticker: 'CSWI',
-      name: 'CSW Industrials',
-      price: 362.45,
-      marketCap: 5.6,
-      change: 3.1,
-      asymmetriesPresent: [1, 2, 4, 6],
-      analystCoverage: 2,
-      insiderOwnership: 25.4,
-      recentInsiderBuys: 4,
-      roic: 24.3,
+      ticker: 'CWH',
+      name: 'Camping World Holdings',
+      price: 22.15,
+      marketCap: 1.8,
+      change: -1.5,
+      asymmetriesPresent: [2, 4, 5, 7],
+      analystCoverage: 6,
+      insiderOwnership: 45.2,
+      recentInsiderBuys: 5,
+      roic: 11.2,
       acquisitionsYearly: 2,
-      institutionalOwnership: 42.1,
-      notes: 'Industrial products, high insider ownership'
+      institutionalOwnership: 41.5,
+      notes: '★ EJEMPLO CREADO PARA TI: Muy por debajo de valor, fuerte compra de insiders.',
+      pbRatio: 0.95,
+      targetPrice: 35.00,
+      analystScore: 2.2,
+      sector: 'Consumer Cyclical'
     }
   ];
 
@@ -167,17 +197,29 @@ const AsymmetryDashboard = () => {
   }, []);
 
   const filteredStocks = stocks.filter((stock: any) => {
+    // Filtros originales
     const meetsMinAsymmetries = stock.asymmetriesPresent.length >= filters.minAsymmetries;
     const matchesSearch = stock.ticker.toLowerCase().includes(searchTerm.toLowerCase()) ||
       stock.name.toLowerCase().includes(searchTerm.toLowerCase());
     const meetsSelectedAsymmetries = filters.selectedAsymmetries.length === 0 ||
-      filters.selectedAsymmetries.every(id => stock.asymmetriesPresent.includes(id));
+      filters.selectedAsymmetries.every((id: number) => stock.asymmetriesPresent.includes(id));
 
     let meetsMarketCap = true;
     if (filters.marketCapRange === 'small') meetsMarketCap = stock.marketCap >= 0.3 && stock.marketCap <= 2;
     if (filters.marketCapRange === 'mid') meetsMarketCap = stock.marketCap > 2 && stock.marketCap <= 10;
 
-    return meetsMinAsymmetries && matchesSearch && meetsSelectedAsymmetries && meetsMarketCap;
+    // Nuevos Filtros Cuantitativos
+    const meetsPB = !quantFilters.pbUnder1 || stock.pbRatio < 1.0;
+    const upside = (stock.targetPrice - stock.price) / stock.price;
+    const meetsUpside = !quantFilters.upsideOver50 || upside >= 0.3; // Ajustado a 30%
+    const meetsStrongBuy = !quantFilters.strongBuy || stock.analystScore <= 2.0; // Ajustado a Strong Buy real
+
+    // Segmentación por Escenario
+    let meetsScenario = true;
+    if (viewMode === 'escenarioA') meetsScenario = stock.price > 50;
+    if (viewMode === 'escenarioB') meetsScenario = stock.price <= 50;
+
+    return meetsMinAsymmetries && matchesSearch && meetsSelectedAsymmetries && meetsMarketCap && meetsPB && meetsUpside && meetsStrongBuy && meetsScenario;
   });
 
   const addToWatchlist = (stock: any) => {
@@ -357,77 +399,121 @@ const AsymmetryDashboard = () => {
           </div>
         </div>
 
+        {/* Filtros Cuantitativos (Deep Value & Upside) - NUEVO */}
+        <div className="bg-white rounded-xl shadow-lg p-6 mb-6 border border-slate-200">
+          <h3 className="text-lg font-bold text-slate-800 mb-4 flex items-center gap-2">
+            📊 Filtros Analista Cuantitativo (Deep Value & Upside)
+          </h3>
+          <div className="flex flex-wrap gap-4">
+            <label className={`flex items-center gap-2 cursor-pointer px-4 py-2 rounded-lg border transition-all ${quantFilters.pbUnder1 ? 'bg-blue-100 border-blue-500' : 'bg-slate-50 border-slate-200 hover:bg-slate-100'}`}>
+              <input type="checkbox" checked={quantFilters.pbUnder1} onChange={e => setQuantFilters({ ...quantFilters, pbUnder1: e.target.checked })} className="hidden" />
+              <div className={`w-4 h-4 rounded border flex items-center justify-center ${quantFilters.pbUnder1 ? 'bg-blue-600 border-blue-600' : 'border-slate-400'}`}>
+                {quantFilters.pbUnder1 && <CheckCircle size={12} className="text-white" />}
+              </div>
+              <span className="text-sm font-semibold text-slate-700">P/B &lt; 1.0 (Value)</span>
+            </label>
+
+            <label className={`flex items-center gap-2 cursor-pointer px-4 py-2 rounded-lg border transition-all ${quantFilters.upsideOver50 ? 'bg-blue-100 border-blue-500' : 'bg-slate-50 border-slate-200 hover:bg-slate-100'}`}>
+              <input type="checkbox" checked={quantFilters.upsideOver50} onChange={e => setQuantFilters({ ...quantFilters, upsideOver50: e.target.checked })} className="hidden" />
+              <div className={`w-4 h-4 rounded border flex items-center justify-center ${quantFilters.upsideOver50 ? 'bg-blue-600 border-blue-600' : 'border-slate-400'}`}>
+                {quantFilters.upsideOver50 && <CheckCircle size={12} className="text-white" />}
+              </div>
+              <span className="text-sm font-semibold text-slate-700">Upside &gt; 30% (Filtro Anti-Value-Trap)</span>
+            </label>
+
+            <label className={`flex items-center gap-2 cursor-pointer px-4 py-2 rounded-lg border transition-all ${quantFilters.strongBuy ? 'bg-blue-100 border-blue-500' : 'bg-slate-50 border-slate-200 hover:bg-slate-100'}`}>
+              <input type="checkbox" checked={quantFilters.strongBuy} onChange={e => setQuantFilters({ ...quantFilters, strongBuy: e.target.checked })} className="hidden" />
+              <div className={`w-4 h-4 rounded border flex items-center justify-center ${quantFilters.strongBuy ? 'bg-blue-600 border-blue-600' : 'border-slate-400'}`}>
+                {quantFilters.strongBuy && <CheckCircle size={12} className="text-white" />}
+              </div>
+              <span className="text-sm font-semibold text-slate-700">Strong Buy (Score &le; 2.0)</span>
+            </label>
+          </div>
+        </div>
+
         {/* Main Content - 2 Columns */}
         <div className="grid grid-cols-3 gap-6">
           {/* Stocks List - 2/3 */}
           <div className="col-span-2">
             <div className="bg-white rounded-xl shadow-lg border border-slate-200">
-              <div className="p-4 border-b border-slate-200 bg-slate-50">
-                <h2 className="text-xl font-bold text-slate-800">
+              <div className="p-4 border-b border-slate-200 bg-slate-50 flex flex-col md:flex-row justify-between items-center gap-4">
+                <h2 className="text-xl font-bold text-slate-800 whitespace-nowrap">
                   📈 Acciones Filtradas ({filteredStocks.length})
                 </h2>
+
+                {/* Tabs de Segmentación de Escenarios - NUEVO */}
+                <div className="flex bg-slate-200/60 p-1 rounded-lg">
+                  <button
+                    onClick={() => setViewMode('all')}
+                    className={`px-3 py-1.5 text-sm font-semibold rounded-md transition-all ${viewMode === 'all' ? 'bg-white text-blue-700 shadow shadow-blue-100' : 'text-slate-600 hover:text-slate-800'}`}
+                  >Global</button>
+                  <button
+                    onClick={() => setViewMode('escenarioA')}
+                    className={`px-3 py-1.5 text-sm font-semibold rounded-md transition-all ${viewMode === 'escenarioA' ? 'bg-white text-blue-700 shadow shadow-blue-100' : 'text-slate-600 hover:text-slate-800'}`}
+                  >Sólidas (&gt;$50)</button>
+                  <button
+                    onClick={() => setViewMode('escenarioB')}
+                    className={`px-3 py-1.5 text-sm font-semibold rounded-md transition-all ${viewMode === 'escenarioB' ? 'bg-white text-blue-700 shadow shadow-blue-100' : 'text-slate-600 hover:text-slate-800'}`}
+                  >Rápidas (&lt;$50)</button>
+                </div>
               </div>
               <div className="overflow-x-auto">
                 <table className="w-full">
                   <thead className="bg-slate-100 border-b border-slate-200">
                     <tr>
                       <th className="px-4 py-3 text-left text-sm font-semibold text-slate-700">Ticker</th>
-                      <th className="px-4 py-3 text-left text-sm font-semibold text-slate-700">Precio</th>
-                      <th className="px-4 py-3 text-left text-sm font-semibold text-slate-700">Change</th>
+                      <th className="px-4 py-3 text-left text-sm font-semibold text-slate-700">Precio & Upside</th>
+                      <th className="px-4 py-3 text-center text-sm font-semibold text-slate-700">P/B Ratio</th>
                       <th className="px-4 py-3 text-center text-sm font-semibold text-slate-700">Asimetrías</th>
-                      <th className="px-4 py-3 text-center text-sm font-semibold text-slate-700">ROIC %</th>
-                      <th className="px-4 py-3 text-center text-sm font-semibold text-slate-700">Actions</th>
+                      <th className="px-4 py-3 text-center text-sm font-semibold text-slate-700">Acción</th>
                     </tr>
                   </thead>
                   <tbody>
-                    {filteredStocks.map((stock, idx) => (
-                      <tr
-                        key={stock.ticker}
-                        className={`border-b border-slate-100 hover:bg-blue-50 cursor-pointer transition-colors ${idx % 2 === 0 ? 'bg-white' : 'bg-slate-50'
-                          }`}
-                        onClick={() => setSelectedStock(stock)}
-                      >
-                        <td className="px-4 py-3">
-                          <div className="font-bold text-slate-800">{stock.ticker}</div>
-                          <div className="text-xs text-slate-500 truncate max-w-[150px]">{stock.name}</div>
-                        </td>
-                        <td className="px-4 py-3">
-                          <div className="font-semibold text-slate-800">${stock.price.toFixed(2)}</div>
-                          <div className="text-xs text-slate-500">${stock.marketCap.toFixed(2)}B</div>
-                        </td>
-                        <td className="px-4 py-3">
-                          <div className={`flex items-center gap-1 font-semibold ${stock.change >= 0 ? 'text-green-600' : 'text-red-600'
-                            }`}>
-                            {stock.change >= 0 ? <TrendingUp size={16} /> : <TrendingDown size={16} />}
-                            {stock.change >= 0 ? '+' : ''}{stock.change.toFixed(2)}%
-                          </div>
-                        </td>
-                        <td className="px-4 py-3">
-                          <div className={`inline-flex items-center gap-2 px-3 py-1 rounded-full border text-sm font-bold ${getAsymmetryColor(stock.asymmetriesPresent.length)
-                            }`}>
-                            {stock.asymmetriesPresent.length} / 7
-                          </div>
-                        </td>
-                        <td className="px-4 py-3 text-center">
-                          <span className={`font-semibold ${stock.roic >= 20 ? 'text-green-600' : stock.roic >= 15 ? 'text-blue-600' : 'text-slate-600'
-                            }`}>
-                            {stock.roic.toFixed(1)}%
-                          </span>
-                        </td>
-                        <td className="px-4 py-3 text-center">
-                          <button
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              addToWatchlist(stock);
-                            }}
-                            className="text-blue-600 hover:text-blue-700 p-2 hover:bg-blue-50 rounded-lg transition-colors"
-                            title="Agregar a watchlist"
-                          >
-                            <Plus size={18} />
-                          </button>
-                        </td>
-                      </tr>
-                    ))}
+                    {filteredStocks.map((stock: any, idx: number) => {
+                      const upsidePct = ((stock.targetPrice - stock.price) / stock.price) * 100;
+                      return (
+                        <tr
+                          key={stock.ticker}
+                          className={`border-b border-slate-100 hover:bg-blue-50 cursor-pointer transition-colors ${idx % 2 === 0 ? 'bg-white' : 'bg-slate-50'
+                            }`}
+                          onClick={() => setSelectedStock(stock)}
+                        >
+                          <td className="px-4 py-3">
+                            <div className="font-bold text-slate-800">{stock.ticker}</div>
+                            <div className="text-xs text-slate-500 truncate max-w-[150px]">{stock.sector}</div>
+                          </td>
+                          <td className="px-4 py-3">
+                            <div className="font-semibold text-slate-800">${stock.price.toFixed(2)}</div>
+                            <div className={`text-xs font-bold ${upsidePct >= 30 ? 'text-green-600' : 'text-slate-500'}`}>
+                              Tgt: ${stock.targetPrice.toFixed(2)} (+{upsidePct.toFixed(0)}%)
+                            </div>
+                          </td>
+                          <td className="px-4 py-3 text-center">
+                            <div className={`font-semibold ${stock.pbRatio < 1.0 ? 'text-green-600' : 'text-slate-600'}`}>
+                              {stock.pbRatio.toFixed(2)}
+                            </div>
+                          </td>
+                          <td className="px-4 py-3 text-center">
+                            <div className={`inline-flex items-center justify-center w-8 h-8 rounded-full border text-sm font-bold ${getAsymmetryColor(stock.asymmetriesPresent.length)
+                              }`}>
+                              {stock.asymmetriesPresent.length}
+                            </div>
+                          </td>
+                          <td className="px-4 py-3 text-center">
+                            <button
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                addToWatchlist(stock);
+                              }}
+                              className="text-blue-600 hover:text-blue-700 p-2 hover:bg-blue-50 rounded-lg transition-colors mx-auto"
+                              title="Agregar a watchlist"
+                            >
+                              <Plus size={18} />
+                            </button>
+                          </td>
+                        </tr>
+                      )
+                    })}
                   </tbody>
                 </table>
               </div>
@@ -484,7 +570,33 @@ const AsymmetryDashboard = () => {
                   </div>
 
                   <div className="border-t border-slate-200 pt-4">
-                    <div className="text-sm font-semibold text-slate-700 mb-3">Métricas Clave:</div>
+                    <div className="text-sm font-semibold text-slate-700 mb-3">Métricas Cuantitativas (Deep Value):</div>
+                    <div className="space-y-2 text-sm bg-gradient-to-r from-slate-50 to-white p-3 rounded-lg border border-slate-200">
+                      <div className="flex justify-between items-center">
+                        <span className="text-slate-600">Sector:</span>
+                        <span className="font-semibold text-slate-800 bg-slate-200 px-2 py-0.5 rounded text-xs">{selectedStock.sector}</span>
+                      </div>
+                      <div className="flex justify-between items-center">
+                        <span className="text-slate-600">P/B Ratio:</span>
+                        <span className={`font-semibold ${selectedStock.pbRatio < 1.0 ? 'text-green-600' : 'text-slate-700'}`}>
+                          {selectedStock.pbRatio.toFixed(2)} {selectedStock.pbRatio < 1.0 && '🔥'}
+                        </span>
+                      </div>
+                      <div className="flex justify-between items-center">
+                        <span className="text-slate-600">Precio Objetivo:</span>
+                        <span className="font-semibold text-blue-600">${selectedStock.targetPrice.toFixed(2)}</span>
+                      </div>
+                      <div className="flex justify-between items-center">
+                        <span className="text-slate-600">Score Analistas:</span>
+                        <span className={`font-semibold ${selectedStock.analystScore <= 2.0 ? 'text-green-600' : 'text-slate-700'}`}>
+                          {selectedStock.analystScore.toFixed(1)} (1=Strong Buy)
+                        </span>
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="border-t border-slate-200 pt-4">
+                    <div className="text-sm font-semibold text-slate-700 mb-3">Métricas de Asimetría Clave:</div>
                     <div className="space-y-2 text-sm">
                       <div className="flex justify-between">
                         <span className="text-slate-600">ROIC:</span>
@@ -496,11 +608,11 @@ const AsymmetryDashboard = () => {
                       </div>
                       <div className="flex justify-between">
                         <span className="text-slate-600">Cobertura Analistas:</span>
-                        <span className="font-semibold">{selectedStock.analystCoverage}</span>
+                        <span className="font-semibold">{selectedStock.analystCoverage} activos</span>
                       </div>
                       <div className="flex justify-between">
                         <span className="text-slate-600">Insider Buys (90d):</span>
-                        <span className="font-semibold">{selectedStock.recentInsiderBuys}</span>
+                        <span className="font-semibold">{selectedStock.recentInsiderBuys} transacciones</span>
                       </div>
                       <div className="flex justify-between">
                         <span className="text-slate-600">Adquisiciones/año:</span>
