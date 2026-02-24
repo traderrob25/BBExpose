@@ -248,7 +248,7 @@ const AsymmetryDashboard = () => {
     // Segmentación por Escenario
     let meetsScenario = true;
     if (viewMode === 'escenarioA') meetsScenario = stock.price > 50;
-    if (viewMode === 'escenarioB') meetsScenario = stock.price <= 50;
+    if (viewMode === 'escenarioB') meetsScenario = stock.price >= 5 && stock.price <= 20;
 
     return meetsMinAsymmetries && matchesSearch && meetsSelectedAsymmetries && meetsMarketCap && meetsPB && meetsUpside && meetsStrongBuy && meetsScenario;
   });
@@ -486,7 +486,7 @@ const AsymmetryDashboard = () => {
                   <button
                     onClick={() => setViewMode('escenarioB')}
                     className={`px-3 py-1.5 text-sm font-semibold rounded-md transition-all ${viewMode === 'escenarioB' ? 'bg-white text-blue-700 shadow shadow-blue-100' : 'text-slate-600 hover:text-slate-800'}`}
-                  >Rápidas (&lt;$50)</button>
+                  >Rápidas ($5 - $20)</button>
                 </div>
               </div>
               <div className="overflow-x-auto">
