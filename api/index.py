@@ -11,6 +11,20 @@ warnings.filterwarnings('ignore')
 
 OPTIONABLE_STOCKS = ['NVDA', 'SPY', 'QQQ', 'IWM', 'AMD', 'PLTR', 'AAPL', 'GOOGL', 'NFLX', 'SOXL', 'MU', 'AVGO']
 
+# Base de datos pre-configurada (Cualitativa) para el Asymmetry Dashboard
+DEEP_VALUE_DB = [
+    {"ticker": "POWL", "asymmetriesPresent": [1, 3, 4, 6], "notes": "Electrical equipment, strong ROIC, insider buying"},
+    {"ticker": "SSD",  "asymmetriesPresent": [1, 2, 6, 7], "notes": "Construction products, decentralized operations"},
+    {"ticker": "ROLL", "asymmetriesPresent": [1, 2, 3, 6], "notes": "Industrial bearings, active acquirer"},
+    {"ticker": "EXPD", "asymmetriesPresent": [2, 6, 7], "notes": "Logistics, exceptional ROIC, decentralized model"},
+    {"ticker": "BZH",  "asymmetriesPresent": [1, 5, 6], "notes": "Deep value builder, P/B bajo 1.0, enorme potencial alcista."},
+    {"ticker": "CWH",  "asymmetriesPresent": [2, 4, 5, 7], "notes": "Muy por debajo de valor, fuerte compra de insiders."},
+    {"ticker": "RICK", "asymmetriesPresent": [3, 4, 6, 7], "notes": "Fuerte flujo de caja libre, recompras masivas."},
+    {"ticker": "LANC", "asymmetriesPresent": [2, 5, 6, 7], "notes": "Pricing power, adquisiciones estratégicas recientes."},
+    {"ticker": "PLAB", "asymmetriesPresent": [1, 4, 5, 7], "notes": "Sector semi castigado, compras de insiders."},
+    {"ticker": "SXC",  "asymmetriesPresent": [1, 2, 4, 6], "notes": "Materiales básicos con escasez estructural."}
+]
+
 app = Flask(__name__)
 
 def calculate_bollinger_bands(df, period=20, std_dev=2):
@@ -139,6 +153,42 @@ def analyze_stock(symbol):
     except Exception as e:
         return None
 
+def get_deep_value_metrics(stock_data):
+    """Obtiene metadata cuantitativa pesada de YF y la fusiona con la data cualitativa."""
+    symbol = stock_data['ticker']
+    try:
+        ticker = yf.Ticker(symbol)
+        info = ticker.info
+        
+        current_price = info.get('currentPrice', info.get('regularMarketPrice', 0))
+        target_price = info.get('targetMeanPrice', current_price)
+        
+        # Mezclamos la data cualitativa de la DB con la Cuantitativa Viva
+        result = {
+            'ticker': symbol,
+            'name': info.get('longName', symbol),
+            'sector': info.get('sector', 'N/A'),
+            'price': current_price,
+            'marketCap': round(info.get('marketCap', 0) / 1e9, 2), # Billions
+            'pbRatio': round(info.get('priceToBook', 99.9), 2),
+            'targetPrice': target_price,
+            'analystScore': round(info.get('recommendationMean', 5.0), 1),
+            'change': 0.0, # Placeholder, se usaría regularMarketChangePercent si estuviera disponible limpio
+            
+            # Asimetrías y métricas cualitativas
+            'asymmetriesPresent': stock_data.get('asymmetriesPresent', []),
+            'notes': stock_data.get('notes', ''),
+            'insiderOwnership': round(info.get('heldPercentInsiders', 0) * 100, 1),
+            'roic': round(info.get('returnOnEquity', 0) * 100, 1), # Proxy usando ROE
+            'analystCoverage': info.get('numberOfAnalystOpinions', 0),
+            'recentInsiderBuys': stock_data.get('recentInsiderBuys', 0), # Hardcoded por ahora
+            'acquisitionsYearly': stock_data.get('acquisitionsYearly', 0) # Hardcoded por ahora
+        }
+        return result
+    except Exception as e:
+        print(f"Error fetching deep value for {symbol}: {e}")
+        return stock_data # Retorna data básica si falla YF
+
 def send_discord_alert(reversiones):
     webhook_url = os.environ.get('DISCORD_WEBHOOK_URL')
     if not webhook_url:
@@ -158,6 +208,25 @@ def send_discord_alert(reversiones):
         requests.post(webhook_url, json=payload)
     except Exception as e:
         print("Error enviando a Discord:", e)
+
+@app.route('/api/asymmetry')
+def asymmetry_api():
+    """Endpoint para cargar el Dashboard de Asimetrías con datos reales"""
+    results = []
+    with ThreadPoolExecutor(max_workers=5) as executor:
+        future_to_symbol = {executor.submit(get_deep_value_metrics, stock): stock for stock in DEEP_VALUE_DB}
+        for future in as_completed(future_to_symbol):
+            try:
+                res = future.result()
+                if res and 'price' in res:
+                    results.append(res)
+            except Exception:
+                pass
+                
+    return jsonify({
+        "status": "success",
+        "data": results
+    })
 
 @app.route('/api/scan')
 def scan_api():

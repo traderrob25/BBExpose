@@ -20,6 +20,8 @@ const AsymmetryDashboard = () => {
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedStock, setSelectedStock] = useState<any>(null);
   const [lastUpdate, setLastUpdate] = useState(new Date().toLocaleDateString());
+  const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
   // Las 7 asimetrías estructurales
   const asymmetries = [
@@ -192,8 +194,37 @@ const AsymmetryDashboard = () => {
     }
   ];
 
+  const fetchAsymmetryData = async () => {
+    setIsLoading(true);
+    setError(null);
+    try {
+      const res = await fetch('/api/asymmetry');
+      if (!res.ok) throw new Error('Error al conectar con el motor cuantitativo (YF).');
+      const json = await res.json();
+      if (json.status === 'success' && json.data) {
+        setStocks(json.data);
+        setLastUpdate(new Date().toLocaleTimeString());
+      } else {
+        throw new Error('Formato de datos inválido desde la API.');
+      }
+    } catch (err: any) {
+      console.error(err);
+      setError(err.message || 'Error desconocido.');
+      // Fallback a algunas de muestra si falla la red (solo para que no se vea vacío)
+      setStocks([{
+        ticker: 'BZH', name: 'Beazer Homes USA', price: 29.50, sector: 'Consumer Cyclical',
+        marketCap: 0.9, pbRatio: 0.85, targetPrice: 48.00, analystScore: 1.9,
+        change: 0, roic: 14.5, insiderOwnership: 12.1, analystCoverage: 4,
+        recentInsiderBuys: 3, acquisitionsYearly: 0, asymmetriesPresent: [1, 5, 6],
+        notes: 'Fallback Dummie: Error en API.'
+      }]);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
   useEffect(() => {
-    setStocks(sampleStocks);
+    fetchAsymmetryData();
   }, []);
 
   const filteredStocks = stocks.filter((stock: any) => {
@@ -271,10 +302,11 @@ const AsymmetryDashboard = () => {
               <div className="text-sm text-slate-500 mb-2">Última actualización</div>
               <div className="text-lg font-semibold text-slate-700">{lastUpdate}</div>
               <button
-                onClick={() => setLastUpdate(new Date().toLocaleDateString())}
-                className="mt-2 text-sm text-blue-600 hover:text-blue-700 flex items-center gap-1"
+                onClick={fetchAsymmetryData}
+                disabled={isLoading}
+                className="mt-2 text-sm text-blue-600 hover:text-blue-700 flex items-center gap-1 disabled:opacity-50"
               >
-                <RefreshCw size={14} /> Actualizar
+                <RefreshCw size={14} className={isLoading ? "animate-spin" : ""} /> {isLoading ? 'Cargando...' : 'Actualizar'}
               </button>
             </div>
           </div>
@@ -469,7 +501,27 @@ const AsymmetryDashboard = () => {
                     </tr>
                   </thead>
                   <tbody>
-                    {filteredStocks.map((stock: any, idx: number) => {
+                    {isLoading ? (
+                      <tr>
+                        <td colSpan={5} className="px-4 py-12 text-center text-slate-500">
+                          <RefreshCw size={24} className="animate-spin mx-auto mb-3 text-blue-500" />
+                          Consultando Yahoo Finance y Deep Value Database...
+                        </td>
+                      </tr>
+                    ) : error ? (
+                      <tr>
+                        <td colSpan={5} className="px-4 py-12 text-center text-red-500">
+                          <AlertCircle size={24} className="mx-auto mb-3" />
+                          {error}
+                        </td>
+                      </tr>
+                    ) : filteredStocks.length === 0 ? (
+                      <tr>
+                        <td colSpan={5} className="px-4 py-12 text-center text-slate-500">
+                          Ninguna acción cumple con los filtros activos.
+                        </td>
+                      </tr>
+                    ) : filteredStocks.map((stock: any, idx: number) => {
                       const upsidePct = ((stock.targetPrice - stock.price) / stock.price) * 100;
                       return (
                         <tr
