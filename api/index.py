@@ -9,7 +9,10 @@ from flask import Flask, jsonify, request
 
 warnings.filterwarnings('ignore')
 
-OPTIONABLE_STOCKS = ['NVDA', 'SPY', 'QQQ', 'IWM', 'AMD', 'PLTR', 'AAPL', 'GOOGL', 'NFLX', 'SOXL', 'MU', 'AVGO']
+# Prioridad definida por el usuario
+PRIORITY_STOCKS = ['PLTR', 'GOOGL']
+SECONDARY_STOCKS = ['SPY', 'QQQ', 'AMD', 'NVDA']
+OPTIONABLE_STOCKS = PRIORITY_STOCKS + SECONDARY_STOCKS + ['AAPL', 'IWM', 'NFLX', 'SOXL', 'MU', 'AVGO']
 
 # Base de datos pre-configurada (Cualitativa) para el Asymmetry Dashboard
 DEEP_VALUE_DB = [
@@ -129,8 +132,14 @@ def analyze_stock(symbol):
         distancia_target_pct = round(((target_sma20 - current_price) / current_price) * 100, 2)
         alerta_reversion = pos_15m in ['UPPER', 'LOWER']
 
+        # Determinar nivel de alerta para prioridad
+        is_priority = symbol in PRIORITY_STOCKS
+        high_alert = pos_1wk in ['UPPER', 'LOWER'] or pos_1mo in ['UPPER', 'LOWER']
+
         return {
             'symbol': symbol,
+            'is_priority': is_priority,
+            'high_alert': high_alert,
             'price': round(current_price, 2),
             'spread_pct': round(spread_pct, 4) if spread_pct > 0 else 'N/A',
             'triple_confluence': triple_confluence,
@@ -151,6 +160,7 @@ def analyze_stock(symbol):
             'pos_1mo': pos_1mo, 'pct_1mo': round(pct_1mo, 1)
         }
     except Exception as e:
+        print(f"Error analizando {symbol}: {e}")
         return None
 
 def get_deep_value_metrics(stock_data):
@@ -160,29 +170,29 @@ def get_deep_value_metrics(stock_data):
         ticker = yf.Ticker(symbol)
         info = ticker.info
         
-        current_price = info.get('currentPrice', info.get('regularMarketPrice', 0))
-        target_price = info.get('targetMeanPrice', current_price)
+        current_price = info.get('currentPrice') or info.get('regularMarketPrice') or 0
+        target_price = info.get('targetMeanPrice') or info.get('targetPrice') or current_price
         
         # Mezclamos la data cualitativa de la DB con la Cuantitativa Viva
         result = {
             'ticker': symbol,
-            'name': info.get('longName', symbol),
+            'name': info.get('longName') or info.get('shortName') or symbol,
             'sector': info.get('sector', 'N/A'),
             'price': current_price,
-            'marketCap': round(info.get('marketCap', 0) / 1e9, 2), # Billions
-            'pbRatio': round(info.get('priceToBook', 99.9), 2),
+            'marketCap': round((info.get('marketCap') or 0) / 1e9, 2), # Billions
+            'pbRatio': round(info.get('priceToBook') or 99.9, 2),
             'targetPrice': target_price,
-            'analystScore': round(info.get('recommendationMean', 5.0), 1),
-            'change': 0.0, # Placeholder, se usaría regularMarketChangePercent si estuviera disponible limpio
+            'analystScore': round(info.get('recommendationMean') or 5.0, 1),
+            'change': 0.0, # Placeholder
             
             # Asimetrías y métricas cualitativas
             'asymmetriesPresent': stock_data.get('asymmetriesPresent', []),
             'notes': stock_data.get('notes', ''),
-            'insiderOwnership': round(info.get('heldPercentInsiders', 0) * 100, 1),
-            'roic': round(info.get('returnOnEquity', 0) * 100, 1), # Proxy usando ROE
+            'insiderOwnership': round((info.get('heldPercentInsiders') or 0) * 100, 1),
+            'roic': round((info.get('returnOnEquity') or 0) * 100, 1), # Proxy usando ROE
             'analystCoverage': info.get('numberOfAnalystOpinions', 0),
-            'recentInsiderBuys': stock_data.get('recentInsiderBuys', 0), # Hardcoded por ahora
-            'acquisitionsYearly': stock_data.get('acquisitionsYearly', 0) # Hardcoded por ahora
+            'recentInsiderBuys': stock_data.get('recentInsiderBuys', 0),
+            'acquisitionsYearly': stock_data.get('acquisitionsYearly', 0)
         }
         return result
     except Exception as e:
@@ -194,14 +204,35 @@ def send_discord_alert(reversiones):
     if not webhook_url:
         return
     
-    content = "🚨 **HEXADA ALERTA (OVERSHOOT EN 15M)** 🚨\n"
+    # Ordenar por prioridad
+    reversiones.sort(key=lambda x: (not x.get('is_priority', False), not x.get('high_alert', False)))
+
+    content = "🛡️ **HEXADA BOLLINGER SCANNER** 🛡️\n"
+    content += f"Prioridad: **PLTR, GOOGL** | Scanner: Multi-TF\n"
+    content += "─" * 20 + "\n"
+
     for s in reversiones:
-        direccion = "🔴 Vender / Short (Pullback a la baja)" if s['pos_15m'] == 'UPPER' else "🟢 Comprar / Long (Rebote al alza)"
-        content += f"\n🔥 **{s['symbol']}** | Precio Act: ${s['price']}\n"
-        content += f"👉 Sugerencia: **{direccion}** (Pos %B: {s['pct_15m']}%)\n"
-        content += f"🎯 TARGET SMA20: **${s['target_sma20']}** (Distancia: {s['distancia_target_pct']}%)\n"
+        emoji = "⭐" if s.get('is_priority') else "▶️"
+        tf_alert = []
+        if s['pos_1mo'] != 'MIDDLE': tf_alert.append(f"MES ({s['pos_1mo']})")
+        if s['pos_1wk'] != 'MIDDLE': tf_alert.append(f"SEM ({s['pos_1wk']})")
+        if s['pos_1d'] != 'MIDDLE': tf_alert.append(f"DIA ({s['pos_1d']})")
+        if s['pos_1h'] != 'MIDDLE': tf_alert.append(f"1H ({s['pos_1h']})")
+        if s['pos_15m'] != 'MIDDLE': tf_alert.append(f"15M ({s['pos_15m']})")
+        
+        tfs_str = " | ".join(tf_alert) if tf_alert else "Squeeze/Exposición detectada"
+        
+        content += f"{emoji} **{s['symbol']}** | ${s['price']}\n"
+        content += f"📍 Exposición: `{tfs_str}`\n"
+        
+        if s['pos_15m'] != 'MIDDLE':
+            direccion = "🔴 VENDER/SHORT" if s['pos_15m'] == 'UPPER' else "🟢 COMPRAR/REBOTE"
+            content += f"⚡ Señal 15M: **{direccion}** (Target: ${s['target_sma20']})\n"
+        
         if s['triple_confluence']:
             content += f"⚠️ **TRIPLE CONFLUENCIA ACTIVA ({s['confluencia_3tf']})**\n"
+        
+        content += "─" * 15 + "\n"
     
     payload = {"content": content}
     try:
@@ -294,11 +325,17 @@ def cron_api():
             except Exception:
                 pass
 
-    reversiones = [r for r in results if r['alerta_reversion']]
-    if reversiones:
-        send_discord_alert(reversiones)
+    # Filtrar cualquier activo que tenga exposición en CUALQUIER timeframe
+    alertas = []
+    for r in results:
+        tfs = [r['pos_15m'], r['pos_1h'], r['pos_1d'], r['pos_1wk'], r['pos_1mo']]
+        if any(tf != 'MIDDLE' for tf in tfs):
+            alertas.append(r)
+            
+    if alertas:
+        send_discord_alert(alertas)
 
-    return jsonify({"status": "success", "alerts_sent": len(reversiones)})
+    return jsonify({"status": "success", "alerts_sent": len(alertas)})
 
 if __name__ == "__main__":
     app.run(port=5328)

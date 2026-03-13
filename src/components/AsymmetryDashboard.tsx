@@ -285,7 +285,7 @@ const AsymmetryDashboard = () => {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-slate-50 p-6">
+    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-slate-50 p-6 text-slate-900">
       <div className="max-w-7xl mx-auto">
         {/* Header */}
         <div className="bg-white rounded-xl shadow-lg p-6 mb-6 border border-slate-200">
@@ -380,8 +380,8 @@ const AsymmetryDashboard = () => {
                   type="text"
                   value={searchTerm}
                   onChange={(e) => setSearchTerm(e.target.value)}
-                  placeholder="POWL, Simpson..."
-                  className="w-full pl-10 pr-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                  placeholder="Ticker o nombre..."
+                  className="w-full pl-10 pr-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-slate-900 bg-white placeholder-slate-400"
                 />
               </div>
             </div>
@@ -393,7 +393,7 @@ const AsymmetryDashboard = () => {
               <select
                 value={filters.minAsymmetries}
                 onChange={(e) => setFilters({ ...filters, minAsymmetries: parseInt(e.target.value) })}
-                className="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                className="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-slate-900 bg-white"
               >
                 <option value={2}>2 o más</option>
                 <option value={3}>3 o más</option>
@@ -409,7 +409,7 @@ const AsymmetryDashboard = () => {
               <select
                 value={filters.marketCapRange}
                 onChange={(e) => setFilters({ ...filters, marketCapRange: e.target.value })}
-                className="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                className="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-slate-900 bg-white"
               >
                 <option value="all">Todas</option>
                 <option value="small">Small ($300M-$2B)</option>

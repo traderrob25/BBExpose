@@ -43,8 +43,8 @@ class Config:
     # API Keys (reemplazar con tu key)
     ALPHA_VANTAGE_API_KEY = "TU_API_KEY_AQUI"
     
-    # Instrumentos autorizados (Fase 1) - PLTR en lugar de MSFT
-    INSTRUMENTS = ["SPY", "QQQ", "NVDA", "AMD", "AAPL", "PLTR", "GOOGL"]
+    # Instrumentos autorizados (Prioridad)
+    INSTRUMENTS = ["PLTR", "GOOGL", "SPY", "QQQ", "NVDA", "AMD", "AAPL"]
     
     # Configuración de indicadores YOS
     BOLLINGER_PERIOD = 20

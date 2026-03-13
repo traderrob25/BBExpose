@@ -35,16 +35,87 @@ export default function Home() {
   return (
     <div className="min-h-screen bg-gray-950 text-gray-100 p-8 font-sans">
       <div className="max-w-6xl mx-auto space-y-10">
-        <div className="flex justify-between items-center border-b border-gray-800 pb-6">
-          <h1 className="text-3xl font-bold tracking-tight text-white">Hexada Scanner<span className="text-emerald-500">.</span>Live</h1>
-          <button
-            onClick={fetchScan}
-            disabled={loading}
-            className="px-4 py-2 bg-emerald-600 hover:bg-emerald-500 rounded-md font-medium text-sm transition-all disabled:opacity-50"
-          >
-            {loading ? "Escaneando..." : "Actualizar Mercado"}
-          </button>
+        <div className="flex flex-col md:flex-row justify-between items-start md:items-center border-b border-gray-800 pb-6 gap-4">
+          <div>
+            <h1 className="text-3xl font-bold tracking-tight text-white flex items-center gap-2">
+              Hexada Scanner<span className="text-emerald-500">.</span>Live
+              <span className="text-xs bg-emerald-500/10 text-emerald-400 px-2 py-0.5 rounded border border-emerald-500/20 font-mono uppercase">Priority Active</span>
+            </h1>
+            <p className="text-gray-500 text-xs mt-1 uppercase tracking-widest font-mono">Focus: PLTR, GOOGL, SPY, QQQ, AMD, NVDA</p>
+          </div>
+          <div className="flex items-center gap-3 w-full md:w-auto">
+            <button
+               onClick={async () => {
+                 const res = await fetch("/api/cron");
+                 const json = await res.json();
+                 alert(`Discord Alert Sent: ${json.alerts_sent} instruments`);
+               }}
+               className="flex-1 md:flex-none px-4 py-2 bg-[#5865F2] hover:bg-[#4752C4] text-white rounded-md font-medium text-sm transition-all flex items-center justify-center gap-2"
+            >
+              <span>💬</span> Discord Alert
+            </button>
+            <button
+              onClick={fetchScan}
+              disabled={loading}
+              className="flex-1 md:flex-none px-4 py-2 bg-emerald-600 hover:bg-emerald-500 rounded-md font-medium text-sm transition-all disabled:opacity-50"
+            >
+              {loading ? "Escaneando..." : "Actualizar Mercado"}
+            </button>
+          </div>
         </div>
+
+        {/* New Multi-TF Priority Scanner Section */}
+        <section className="bg-gray-900/50 border border-gray-800 rounded-xl p-6 shadow-2xl overflow-hidden">
+          <div className="flex items-center justify-between mb-6">
+            <h2 className="text-xl font-bold text-white flex items-center gap-2">
+              <span className="text-emerald-500">🛡️</span> Multi-TF Bollinger Scanner
+            </h2>
+            <div className="flex items-center gap-4 text-[10px] uppercase tracking-widest font-bold text-gray-500">
+              <span className="flex items-center gap-1"><span className="w-2 h-2 bg-red-500 rounded-full"></span> Upper</span>
+              <span className="flex items-center gap-1"><span className="w-2 h-2 bg-emerald-500 rounded-full"></span> Lower</span>
+              <span className="flex items-center gap-1"><span className="w-2 h-2 bg-gray-600 rounded-full"></span> Inside</span>
+            </div>
+          </div>
+          
+          <div className="overflow-x-auto">
+            <table className="w-full text-left border-collapse">
+              <thead>
+                <tr className="text-[10px] text-gray-500 uppercase tracking-widest border-b border-gray-800">
+                  <th className="pb-4 font-bold">Instrumento</th>
+                  <th className="pb-4 text-center">15m</th>
+                  <th className="pb-4 text-center">1h</th>
+                  <th className="pb-4 text-center">1d</th>
+                  <th className="pb-4 text-center text-emerald-500">Weekly</th>
+                  <th className="pb-4 text-center text-emerald-500">Monthly</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-gray-800/50">
+                {data.map((item: any) => {
+                  const isPriority = ['PLTR', 'GOOGL'].includes(item.symbol);
+                  const getBadge = (pos: string) => {
+                    if (pos === 'UPPER') return <span className="bg-red-500/10 text-red-500 border border-red-500/20 px-2 py-0.5 rounded text-[10px] font-bold">Upper</span>;
+                    if (pos === 'LOWER') return <span className="bg-emerald-500/10 text-emerald-500 border border-emerald-500/20 px-2 py-0.5 rounded text-[10px] font-bold">Lower</span>;
+                    return <span className="bg-gray-800 text-gray-500 px-2 py-0.5 rounded text-[10px] font-bold">Inside</span>;
+                  };
+
+                  return (
+                    <tr key={'scanner-' + item.symbol} className={`group hover:bg-gray-800/20 transition-colors ${isPriority ? 'bg-emerald-500/5' : ''}`}>
+                      <td className="py-4 font-bold flex items-center gap-2 text-sm text-white">
+                        {isPriority && <span className="text-yellow-500">★</span>}
+                        {item.symbol}
+                      </td>
+                      <td className="text-center">{getBadge(item.pos_15m)}</td>
+                      <td className="text-center">{getBadge(item.pos_1h)}</td>
+                      <td className="text-center">{getBadge(item.pos_1d)}</td>
+                      <td className="text-center">{getBadge(item.pos_1wk)}</td>
+                      <td className="text-center">{getBadge(item.pos_1mo)}</td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
+        </section>
 
         {/* Section: YOS Bot Engine (Yoel & Cardona) */}
         <section className="space-y-4">
